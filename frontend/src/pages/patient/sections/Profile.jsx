@@ -1,5 +1,8 @@
-import React from "react";
-import { Form, Input, Select, Button, Card, Typography, message } from "antd";
+import React, { useEffect } from "react";
+import { Form, Input, Select, Button, Card, Typography, message, DatePicker } from "antd";
+import { jwtDecode } from 'jwt-decode';
+import dayjs from 'dayjs';
+import api from '../../../services/api';
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -7,19 +10,64 @@ const { Option } = Select;
 const Profile = () => {
   const [form] = Form.useForm();
 
-  const handleSubmit = (values) => {
-    console.log("Profile values:", values);
-    message.success("Profile updated successfully!");
+  useEffect(() => { fetchUserProfile(); }, []);
+
+  const fetchUserProfile = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.error('No token found. Please login again.');
+        return;
+      }
+      const decodedToken = jwtDecode(token);
+      const userID = decodedToken.id;
+      if (!userID) {
+        console.error('User id not found. Please login again.');
+        return;
+      }
+      
+      const response = await api.get(`/users/${userID}`);
+      const user = response.data;
+      
+      form.setFieldsValue({
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        phone: user.phone,
+        gender: user.gender,
+        bloodGroup: user.bloodGroup,
+        dateOfBirth: user.dateOfBirth ? dayjs(user.dateOfBirth) : null
+      });
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    }
   };
 
-  const initialValues = {
-    firstName: "John",
-    lastName: "Doe",
-    email: "john.doe@example.com",
-    phone: "+1 234 567 8900",
-    gender: "male",
-    bloodGroup: "O+",
-    age: "30",
+  const handleSubmit = async (values) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.error('No token found. Please login again.');
+        return;
+      }
+      const decodedToken = jwtDecode(token);
+      const userID = decodedToken.id;
+      if (!userID) {
+        console.error('User id not found. Please login again.');
+        return;
+      }
+      
+      const formattedValues = {
+        ...values,
+        dateOfBirth: values.dateOfBirth ? values.dateOfBirth.format('YYYY-MM-DD') : null
+      };
+      
+      await api.put(`/users/${userID}`, formattedValues);
+      message.success('Profile Updated Successfully');
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      message.error('Error updating Profile');
+    }
   };
 
   return (
@@ -32,7 +80,6 @@ const Profile = () => {
           form={form}
           layout="vertical"
           onFinish={handleSubmit}
-          initialValues={initialValues}
         >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Form.Item
@@ -107,12 +154,22 @@ const Profile = () => {
             </Form.Item>
 
             <Form.Item
-              name="age"
-              label="Age"
-              rules={[{ required: true, message: "Please enter your age" }]}
-            >
-              <Input size="large" type="number" />
-            </Form.Item>
+                name="dateOfBirth"
+                label="Date of Birth"
+                rules={[
+                  {
+                    required: true,
+                    message: "Please select your date of birth!",
+                  },
+                ]}
+              >
+                <DatePicker
+                  placeholder="Date of Birth"
+                  size="large"
+                  style={{ width: "100%" }}
+                  format="YYYY-MM-DD"
+                />
+              </Form.Item>
           </div>
 
           <Form.Item className="mt-6">

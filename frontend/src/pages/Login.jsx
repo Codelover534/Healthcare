@@ -12,6 +12,7 @@ import {
 } from "antd";
 import { GoogleOutlined, LockOutlined, UserOutlined } from "@ant-design/icons";
 import { Link } from "react-router-dom";
+import api from '../services/api';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -19,13 +20,20 @@ const { Option } = Select;
 const Login = () => {
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm();
+  const [error, setError] = useState('');
 
   const handleSubmit = async (values) => {
     setLoading(true);
-    // Mock authentication delay
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    console.log("Login values:", values);
-    setLoading(false);
+    try {
+      const res = await api.post('/auth/login', values);
+      localStorage.setItem('token', res.data.token);
+      setLoading(false);
+      window.location = `/${values.role}`;
+    } catch(err) {
+      console.error(err);
+      setError(err.response?.data?.message || 'Login Failed');
+      setLoading(false);
+    }
   };
 
   const roles = ["Patient", "Doctor", "Front Desk", "Admin", "Insurance"];
@@ -54,6 +62,7 @@ const Login = () => {
             onFinish={handleSubmit}
             requiredMark={false}
           >
+            {error && <div style={{ color: 'red', marginBottom: '1rem', textAlign: 'center' }}>{error}</div>}
             <Form.Item
               name="email"
               rules={[

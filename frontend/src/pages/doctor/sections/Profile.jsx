@@ -1,12 +1,70 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Form, Input, Button, Card, InputNumber, message } from "antd";
+import { jwtDecode } from 'jwt-decode';
+import dayjs from 'dayjs';
+import api from '../../../services/api';
 
 const Profile = () => {
   const [form] = Form.useForm();
 
-  const onFinish = (values) => {
-    console.log("Success:", values);
-    message.success("Profile updated successfully!");
+  useEffect(() => { fetchUserProfile(); }, []);
+
+  const fetchUserProfile = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.error('No token found. Please login again.');
+        return;
+      }
+      const decodedToken = jwtDecode(token);
+      const userID = decodedToken.id;
+      if (!userID) {
+        console.error('User id not found. Please login again.');
+        return;
+      }
+      
+      const response = await api.get(`/users/${userID}`);
+      const user = response.data;
+      
+      form.setFieldsValue({
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        phone: user.phone,
+        gender: user.gender,
+        bloodGroup: user.bloodGroup,
+        dateOfBirth: user.dateOfBirth ? dayjs(user.dateOfBirth) : null
+      });
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    }
+  };
+
+  const onFinish = async (values) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.error('No token found. Please login again.');
+        return;
+      }
+      const decodedToken = jwtDecode(token);
+      const userID = decodedToken.id;
+      if (!userID) {
+        console.error('User id not found. Please login again.');
+        return;
+      }
+      
+      const formattedValues = {
+        ...values,
+        dateOfBirth: values.dateOfBirth ? values.dateOfBirth.format('YYYY-MM-DD') : null
+      };
+      
+      await api.put(`/users/${userID}`, formattedValues);
+      message.success('Profile Updated Successfully');
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      message.error('Error updating Profile');
+    }
   };
 
   return (
@@ -15,16 +73,6 @@ const Profile = () => {
         form={form}
         layout="vertical"
         onFinish={onFinish}
-        initialValues={{
-          firstName: "John",
-          lastName: "Doe",
-          email: "john.doe@example.com",
-          phone: "+1 234 567 8900",
-          specialization: "Cardiology",
-          licenseNumber: "MD12345",
-          yearsExperience: 10,
-          address: "123 Medical Center Dr, Healthcare City, HC 12345",
-        }}
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Form.Item
